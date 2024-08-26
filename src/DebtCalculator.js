@@ -36,6 +36,11 @@ const DebtCalculator = () => {
         return balances;
     };
 
+    const trimBalancesAtZero = (balances) => {
+        let zeroIndex = balances.indexOf(0);
+        return zeroIndex !== -1 ? balances.slice(0, zeroIndex + 1) : balances;
+    };
+
     const handleCalculation = () => {
         let initialBalanceWithFee = initialDebt * (1 + balanceTransferFeeRate);
         let lowerBound = initialBalanceWithFee / desiredMonths;
@@ -105,6 +110,15 @@ const DebtCalculator = () => {
         const totalAmountPaidWithCustomAPY = showCustomAPY ? getTotalAmountPaid(initialDebt, totalPaymentWithAdditional, customAPY / 100, maxMonths) : null;
         const totalAmountPaidWithCurrentMonthlyPayment = showCustomAPY && currentMonthlyPayment > 0 ? getTotalAmountPaid(initialDebt, currentMonthlyPayment, customAPY / 100, maxMonths) : null;
 
+        balancesWithPayment = trimBalancesAtZero(balancesWithPayment);
+        balancesWithAdditionalPayment = trimBalancesAtZero(balancesWithAdditionalPayment);
+        if (showCustomAPY) {
+            balancesWithCustomAPY = trimBalancesAtZero(balancesWithCustomAPY);
+            if (balancesWithCurrentMonthlyPayment.length > 0) {
+                balancesWithCurrentMonthlyPayment = trimBalancesAtZero(balancesWithCurrentMonthlyPayment);
+            }
+        }
+
         return {
             requiredPayment,
             debtTableWithPayment: monthsWithPayment.map((month, index) => ({
@@ -119,7 +133,7 @@ const DebtCalculator = () => {
             totalAmountPaidWithCustomAPY,
             totalAmountPaidWithCurrentMonthlyPayment,
             chartData: {
-                labels: monthsWithPayment,
+                labels: monthsWithPayment.slice(0, Math.max(balancesWithPayment.length, balancesWithAdditionalPayment.length, balancesWithCustomAPY.length || 0, balancesWithCurrentMonthlyPayment.length || 0)),
                 datasets: [
                     {
                         label: 'Remaining Debt ($)',
@@ -171,6 +185,10 @@ const DebtCalculator = () => {
         payOffMonthWithCurrentMonthlyPayment,
         balancesWithCurrentMonthlyPayment // Pulling this out for rendering use
     } = handleCalculation();
+
+    const getHighlightStyle = (value, color) => {
+        return value === "0.00" ? { backgroundColor: color } : {};
+    };
 
     return (
         <div className="container mt-5">
@@ -306,10 +324,10 @@ const DebtCalculator = () => {
                             {debtTableWithPayment.map((row, index) => (
                                 <tr key={index}>
                                     <td><strong>{row.month}</strong></td>
-                                    <td>{row.remainingDebt}</td>
-                                    <td>{row.remainingDebtWithAdditional}</td>
-                                    {showCustomAPY && <td>{row.remainingDebtWithCustomAPY}</td>}
-                                    {balancesWithCurrentMonthlyPayment.length > 0 && <td>{row.remainingDebtWithCurrentMonthlyPayment}</td>}
+                                    <td style={getHighlightStyle(row.remainingDebt, 'rgba(153,102,255,1)')}>{row.remainingDebt}</td>
+                                    <td style={getHighlightStyle(row.remainingDebtWithAdditional, 'rgba(255,99,132,1)')}>{row.remainingDebtWithAdditional}</td>
+                                    {showCustomAPY && <td style={getHighlightStyle(row.remainingDebtWithCustomAPY, 'rgba(255,206,86,1)')}>{row.remainingDebtWithCustomAPY}</td>}
+                                    {balancesWithCurrentMonthlyPayment.length > 0 && <td style={getHighlightStyle(row.remainingDebtWithCurrentMonthlyPayment, 'rgba(54,162,235,1)')}>{row.remainingDebtWithCurrentMonthlyPayment}</td>}
                                 </tr>
                             ))}
                         </tbody>
